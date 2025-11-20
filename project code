@@ -1,0 +1,190 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+from PIL import Image, ImageTk  # make sure you installed pillow!
+
+# This list will store our clothing items
+# Each item will be a dict: {"name": ..., "category": ..., "image_path": ..., "photo": ...}
+closet_items = []
+
+# This will store the last image path picked from the file dialog
+selected_image_path = None
+
+
+def choose_image():
+    """
+    Let the user pick an image file from their computer.
+    Save the path in selected_image_path and show it on the screen.
+    """
+    global selected_image_path
+
+    file_path = filedialog.askopenfilename(
+        title="Choose clothing image",
+        filetypes=[
+            ("Image files", "*.png;*.jpg;*.jpeg;*.gif"),
+            ("All files", "*.*")
+        ]
+    )
+
+    if file_path:
+        selected_image_path = file_path
+        image_label_var.set(f"Selected: {file_path.split('/')[-1]}")
+    else:
+        selected_image_path = None
+        image_label_var.set("No image selected")
+
+
+def add_item():
+    """
+    Read the name, category, and image.
+    Create a small item dict and add it to closet_items.
+    Then refresh the grid to show it.
+    """
+    global selected_image_path
+
+    name = name_entry.get().strip()
+    category = category_var.get()
+
+    if name == "":
+        messagebox.showwarning("Missing name", "Please enter a name for the item.")
+        return
+
+    # Prepare item dict
+    item = {
+        "name": name,
+        "category": category,
+        "image_path": selected_image_path,
+        "photo": None  # we will fill this if we can load an image
+    }
+
+    # Try to load the image and create a small thumbnail
+    if selected_image_path is not None:
+        try:
+            img = Image.open(selected_image_path)
+            img.thumbnail((120, 120))  # make it smaller so it fits
+            photo = ImageTk.PhotoImage(img)
+            item["photo"] = photo
+        except Exception as e:
+            # If something goes wrong, we still add the item, just without an image
+            print("Error loading image:", e)
+            item["photo"] = None
+
+    # Add to closet
+    closet_items.append(item)
+
+    # Clear the name field and image selection for the next item
+    name_entry.delete(0, tk.END)
+    selected_image_path = None
+    image_label_var.set("No image selected")
+
+    # Update the display
+    refresh_closet_grid()
+
+
+def refresh_closet_grid():
+    """
+    Clear everything in the closet_frame and re-draw the items in a grid.
+    """
+    # Delete old widgets
+    for widget in closet_frame.winfo_children():
+        widget.destroy()
+
+    # Layout: 4 items per row
+    items_per_row = 4
+
+    for index, item in enumerate(closet_items):
+        row = index // items_per_row
+        col = index % items_per_row
+
+        # Small frame for each clothing item
+        card = tk.Frame(closet_frame, bd=1, relief="solid", padx=5, pady=5)
+        card.grid(row=row, column=col, padx=10, pady=10)
+
+        # Image (if we have one)
+        if item["photo"] is not None:
+            img_label = tk.Label(card, image=item["photo"])
+            img_label.pack()
+        else:
+            img_label = tk.Label(card, text="No Image", width=15, height=7)
+            img_label.pack()
+
+        # Name
+        name_label = tk.Label(card, text=item["name"], font=("Arial", 10, "bold"))
+        name_label.pack(pady=(5, 0))
+
+        # Category
+        category_label = tk.Label(card, text=item["category"], font=("Arial", 9))
+        category_label.pack()
+
+
+# -----------------------------
+# MAIN WINDOW SETUP
+# -----------------------------
+
+root = tk.Tk()
+root.title("Virtual Closet")
+root.geometry("900x600")  # width x height, you can change this
+
+# Top title bar (simple label)
+title_label = tk.Label(root, text="My Virtual Closet", font=("Arial", 18, "bold"))
+title_label.pack(pady=10)
+
+# Main area: left = controls, right = closet grid
+main_frame = tk.Frame(root)
+main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+# LEFT SIDE: Add item controls
+left_frame = tk.Frame(main_frame, bd=1, relief="solid", padx=10, pady=10)
+left_frame.pack(side="left", fill="y")
+
+left_title = tk.Label(left_frame, text="Add Clothing Item", font=("Arial", 14, "bold"))
+left_title.pack(pady=(0, 10))
+
+# Name input
+name_label = tk.Label(left_frame, text="Name:")
+name_label.pack(anchor="w")
+name_entry = tk.Entry(left_frame, width=25)
+name_entry.pack()
+
+# Category dropdown
+category_label = tk.Label(left_frame, text="Category:")
+category_label.pack(anchor="w", pady=(10, 0))
+
+category_var = tk.StringVar(value="Top")
+category_options = ["Top", "Bottom", "Shoes", "Jacket", "Accessory"]
+category_menu = tk.OptionMenu(left_frame, category_var, *category_options)
+category_menu.pack()
+
+# Image selection
+image_button = tk.Button(left_frame, text="Choose Image", command=choose_image)
+image_button.pack(pady=(10, 0))
+
+image_label_var = tk.StringVar(value="No image selected")
+image_label = tk.Label(left_frame, textvariable=image_label_var, wraplength=200, font=("Arial", 8))
+image_label.pack(pady=(5, 0))
+
+# Add item button
+add_button = tk.Button(left_frame, text="Add to Closet", command=add_item)
+add_button.pack(pady=15)
+
+# A small note for future features
+future_label = tk.Label(
+    left_frame,
+    text="(Later we can add outfit suggestions,\nfilters, favorites, etc.)",
+    font=("Arial", 8),
+    fg="gray"
+)
+future_label.pack(pady=(10, 0))
+
+# RIGHT SIDE: Closet grid
+right_frame = tk.Frame(main_frame)
+right_frame.pack(side="left", fill="both", expand=True, padx=(10, 0))
+
+closet_title = tk.Label(right_frame, text="Your Closet", font=("Arial", 14, "bold"))
+closet_title.pack(anchor="w")
+
+# Frame that holds the item cards
+closet_frame = tk.Frame(right_frame)
+closet_frame.pack(fill="both", expand=True, pady=10)
+
+# Start the app
+root.mainloop() 
