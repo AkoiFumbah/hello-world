@@ -8,3 +8,4 @@
 - [x] Start working on code for program
 
 ### Sprint 2
+- [x] write up code for main user interface 
